@@ -1,10 +1,9 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
-#include "freertos/task.h"
+// #include "freertos/FreeRTOS.h"
+// #include "freertos/semphr.h"
+// #include "freertos/task.h"
 #include <memory>
-
-#include "human_face_detect.hpp"
 #include "esp_face_detector.h"
+#include "human_face_detect.hpp"
 
 namespace mp_dl::detector {
 
