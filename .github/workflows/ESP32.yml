@@ -54,12 +54,11 @@ jobs:
         run: |
           cd ~
           # git clone --depth 1 --branch ${{ env.MPY_RELEASE }} https://github.com/micropython/micropython.git
-          git clone --depth 1 --branch master https://github.com/cnadler86/micropython.git
+          git clone --depth 1 --branch mp-dl https://github.com/cnadler86/micropython.git
           cd micropython
           git submodule update --init --depth 1
           cd mpy-cross && make
-          cd ~/micropython/ports/esp32 && make V=1 submodules
-          cd ~/micropython/ && git checkout mp-dl
+          # cd ~/micropython/ports/esp32 && make V=1 submodules
 
   build:
     needs: setup-environment
