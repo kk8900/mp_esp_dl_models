@@ -70,7 +70,6 @@ jobs:
           # - ESP32_GENERIC_S3-SPIRAM_OCT
           - ESP32_GENERIC_S3
         idf_version:
-          - release/v5.2
           - release/v5.3
           - release/v5.4
 
