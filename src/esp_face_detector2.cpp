@@ -1,9 +1,8 @@
-// #include "freertos/FreeRTOS.h"
-// #include "freertos/semphr.h"
-// #include "freertos/task.h"
-
 #include "esp_face_detector.h"
 #include "human_face_detect.hpp"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
 #include <memory>
 
 namespace mp_dl::detector {
@@ -11,7 +10,7 @@ namespace mp_dl::detector {
 // Object
 struct MP_FaceDetector {
     mp_obj_base_t base;
-    std::shared_ptr<HumanFaceDetect> detector = nullptr;
+    // std::shared_ptr<HumanFaceDetect> detector = nullptr;
     // HumanFaceDetect *detector;
 };
 
@@ -28,7 +27,7 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
 static mp_obj_t face_detector_del(mp_obj_t self_in) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
     // delete self->detector;
-    self->detector = nullptr;
+    // self->detector = nullptr;
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_del_obj, face_detector_del);
@@ -63,7 +62,7 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
         tuple[3] = mp_obj_new_int(res.box[3]);
         mp_obj_list_append(list, mp_obj_new_tuple(4, tuple));
     }
-
+    delete detector;
     return list;
 }
 static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_detect);
