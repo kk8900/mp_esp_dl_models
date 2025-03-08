@@ -58,29 +58,7 @@ jobs:
           cd micropython
           git submodule update --init --depth 1
           cd mpy-cross && make
-          cd ~/micropython/ports/esp32 && make submodules
-
-      - name: Merge idf_component.yml from src
-        run: |
-          IDF_COMPONENT_PATH=~/micropython/ports/esp32/main_esp32s3/idf_component.yml
-          SRC_COMPONENT_PATH=${{ github.workspace }}/src/idf_component.yml
-    
-          if [ -f "$SRC_COMPONENT_PATH" ]; then
-            sudo apt-get install -y yq  # Installiere yq für YAML-Merge
-            
-            if [ -f "$IDF_COMPONENT_PATH" ]; then
-              echo "Merging idf_component.yml into MicroPython..."
-              yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' "$IDF_COMPONENT_PATH" "$SRC_COMPONENT_PATH" > temp.yml
-              mv temp.yml "$IDF_COMPONENT_PATH"
-            else
-              echo "Creating new idf_component.yml..."
-              cp "$SRC_COMPONENT_PATH" "$IDF_COMPONENT_PATH"
-            fi
-    
-            echo "idf_component.yml successfully updated in MicroPython."
-          else
-            echo "Warning: src/idf_component.yml not found!"
-          fi
+          cd ~/micropython/ports/esp32 && make V=1 submodules
 
   build:
     needs: setup-environment
