@@ -1,0 +1,142 @@
+name: ESP32
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'src/**'
+      - '.github/workflows/*.yml'
+    tags-ignore:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'src/**'
+      - '.github/workflows/*.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup-environment:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Get MicroPython latest release
+        run: |
+          MPY_RELEASE=$(curl --silent "https://api.github.com/repos/micropython/micropython/releases/latest" | jq -r .tag_name)
+          echo "MPY_RELEASE=${MPY_RELEASE}" >> $GITHUB_ENV
+
+      - name: Cache ESP-IDF and MicroPython
+        id: cache_esp_idf
+        uses: actions/cache@v4
+        with:
+          lookup-only: true
+          path: |
+            ~/esp-idf/
+            ~/.espressif/
+            ~/.cache/pip/
+            ~/micropython/
+          key: mpy-${{ env.MPY_RELEASE }}
+          restore-keys: mpy-
+
+      - name: Install dependencies (if not cached)
+        if: steps.cache_esp_idf.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+
+      - name: Clone MicroPython latest release (if not cached)
+        if: steps.cache_esp_idf.outputs.cache-hit != 'true'
+        run: |
+          cd ~
+          git clone --depth 1 --branch ${{ env.MPY_RELEASE }} https://github.com/micropython/micropython.git
+          cd micropython
+          git submodule update --init --depth 1
+          cd mpy-cross && make
+          cd ~/micropython/ports/esp32 && make submodules
+
+      - name: Merge idf_component.yml from src
+        run: |
+          IDF_COMPONENT_PATH=~/micropython/ports/esp32/main_esp32s3/idf_component.yml
+          SRC_COMPONENT_PATH=${{ github.workspace }}/src/idf_component.yml
+
+          if [ -f "$SRC_COMPONENT_PATH" ]; then
+            if [ -f "$IDF_COMPONENT_PATH" ]; then
+              cat "$SRC_COMPONENT_PATH" >> "$IDF_COMPONENT_PATH"
+            else
+              cp "$SRC_COMPONENT_PATH" "$IDF_COMPONENT_PATH"
+            fi
+            echo "idf_component.yml updated successfully."
+          else
+            echo "Warning: src/idf_component.yml not found!"
+          fi
+
+  build:
+    needs: setup-environment
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - ESP32_GENERIC_S3-SPIRAM_OCT
+          - ESP32_GENERIC_S3-FLASH_4M
+        idf_version:
+          - release/v5.2
+          - release/v5.3
+          - release/v5.4
+
+    steps:
+      - name: Get MicroPython latest release
+        run: |
+          MPY_RELEASE=$(curl --silent "https://api.github.com/repos/micropython/micropython/releases/latest" | jq -r .tag_name)
+          echo "MPY_RELEASE=${MPY_RELEASE}" >> $GITHUB_ENV
+
+      - name: Cache ESP-IDF and MicroPython
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/esp-idf/
+            ~/.espressif/
+            ~/.cache/pip/
+            ~/micropython/
+          key: mpy-${{ env.MPY_RELEASE }}
+          restore-keys: mpy-
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up ESP-IDF
+        run: |
+          cd ~
+          git clone --depth 1 --branch ${{ matrix.idf_version }} https://github.com/espressif/esp-idf.git
+          git -C esp-idf submodule update --init --recursive --filter=tree:0
+          cd esp-idf && ./install.sh esp32s3
+          source ./export.sh
+
+      - name: Build MicroPython
+        run: |
+          cd ~/micropython/ports/esp32
+          source ~/esp-idf/export.sh
+          
+          BOARD_NAME=${{ matrix.board }}
+          IDF_CMD="idf.py -D MICROPY_BOARD=$BOARD_NAME -D USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake -B build-$BOARD_NAME"
+
+          make USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake BOARD=$BOARD_NAME submodules
+          eval "$IDF_CMD build"
+
+          cd ~/micropython/ports/esp32/build-$BOARD_NAME
+          python ../makeimg.py sdkconfig bootloader/bootloader.bin partition_table/partition-table.bin micropython.bin firmware.bin micropython.uf2
+          
+          mkdir -p ~/artifacts
+          mv firmware.bin ~/artifacts/firmware-${BOARD_NAME}-${{ matrix.idf_version }}.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.board }}-${{ matrix.idf_version }}
+          path: ~/artifacts/**
+          retention-days: 5
