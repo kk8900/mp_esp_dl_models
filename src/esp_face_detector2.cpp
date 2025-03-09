@@ -45,24 +45,24 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
     img.height = 240;
     img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
 
-    HumanFaceDetect *detector = new HumanFaceDetect();
-    auto &detect_results = detector->run(img);
+    // HumanFaceDetect *detector = new HumanFaceDetect();
+    // auto &detect_results = detector->run(img);
     // auto &detect_results = self->detector->run(img);
 
-    if (detect_results.size() == 0) {
-        return mp_const_none;
-    }
+    // if (detect_results.size() == 0) {
+    //     return mp_const_none;
+    // }
 
     mp_obj_t list = mp_obj_new_list(0, NULL);
-    for (const auto &res : detect_results) {
-        mp_obj_t tuple[4];
-        tuple[0] = mp_obj_new_int(res.box[0]);
-        tuple[1] = mp_obj_new_int(res.box[1]);
-        tuple[2] = mp_obj_new_int(res.box[2]);
-        tuple[3] = mp_obj_new_int(res.box[3]);
-        mp_obj_list_append(list, mp_obj_new_tuple(4, tuple));
-    }
-    delete detector;
+    // for (const auto &res : detect_results) {
+    //     mp_obj_t tuple[4];
+    //     tuple[0] = mp_obj_new_int(res.box[0]);
+    //     tuple[1] = mp_obj_new_int(res.box[1]);
+    //     tuple[2] = mp_obj_new_int(res.box[2]);
+    //     tuple[3] = mp_obj_new_int(res.box[3]);
+    //     mp_obj_list_append(list, mp_obj_new_tuple(4, tuple));
+    // }
+    // delete detector;
     return list;
 }
 static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_detect);
@@ -91,17 +91,3 @@ MP_DEFINE_CONST_OBJ_TYPE(
     print, (const void *)mp_dl::detector::print,
     locals_dict, &mp_dl::detector::face_detector_locals_dict
 );
-
-// Module definition
-extern "C" {
-    static const mp_rom_map_elem_t module_globals_table[] = {
-        { MP_ROM_QSTR(MP_QSTR_FaceDetector), MP_ROM_PTR(&mp_face_detector_type) },
-    };
-    static MP_DEFINE_CONST_DICT(module_globals, module_globals_table);
-
-    const mp_obj_module_t face_detector_module = {
-        .base = { &mp_type_module },
-        .globals = (mp_obj_dict_t *)&module_globals,
-    };
-    MP_REGISTER_MODULE(MP_QSTR_mp_dl, face_detector_module);
-}
