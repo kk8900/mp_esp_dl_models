@@ -49,7 +49,6 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
         sw_decode_jpeg(jpeg_img, img, true);
     } else {
         img.data = (uint8_t *)bufinfo.buf;
-        img.data_size = (uint32_t)bufinfo.len;
     }
 
     auto &detect_results = self->detector->run(img);
