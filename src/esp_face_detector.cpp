@@ -15,10 +15,18 @@ struct MP_FaceDetector {
 
 // Constructor
 static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    //mp_arg_check_num(n_args, n_kw, 0, 1, false);
-    //MP_FaceDetector *self = mp_obj_malloc(MP_FaceDetector, &mp_face_detector_type);
+    mp_arg_check_num(n_args, n_kw, 0, 2, false);
+
     MP_FaceDetector *self = mp_obj_malloc_with_finaliser(MP_FaceDetector, &mp_face_detector_type);
     self->detector = std::make_shared<HumanFaceDetect>();
+
+    if (n_args > 0) {
+        self->img_width = mp_obj_get_int(args[0]);
+    }
+    if (n_args > 1) {
+        self->img_height = mp_obj_get_int(args[1]);
+    }
+
     return MP_OBJ_FROM_PTR(self);
 }
 
