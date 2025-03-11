@@ -107,7 +107,7 @@ jobs:
           source ~/esp-idf/export.sh
           
           BOARD_NAME=${{ matrix.board }}
-          IDF_CMD="idf.py -D MICROPY_BOARD=$BOARD_NAME -D USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake -B build-$BOARD_NAME"
+          IDF_CMD="idf.py -D MICROPY_BOARD=$BOARD_NAME -D USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake -B build-$BOARD_NAME VERBOSE=1"
 
           make USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake BOARD=$BOARD_NAME submodules
           eval "$IDF_CMD build"
