@@ -70,8 +70,8 @@ jobs:
           # - ESP32_GENERIC_S3-SPIRAM_OCT
           - ESP32_GENERIC_S3
         idf_version:
-          - release/v5.3
-          - release/v5.4
+          - v5.3
+          - v5.4
 
     steps:
       - name: Get MicroPython latest release
@@ -96,7 +96,7 @@ jobs:
       - name: Set up ESP-IDF
         run: |
           cd ~
-          git clone --depth 1 --branch ${{ matrix.idf_version }} https://github.com/espressif/esp-idf.git
+          git clone --depth 1 --branch release/${{ matrix.idf_version }} https://github.com/espressif/esp-idf.git
           git -C esp-idf submodule update --init --recursive --filter=tree:0
           cd esp-idf && ./install.sh esp32s3
           source ./export.sh
@@ -126,10 +126,10 @@ jobs:
           retention-days: 5
 
       - name: Upload build logs on failure
-        if: failure()
+        if: failure()  # Dieser Schritt wird nur bei einem Fehlschlag ausgeführt
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ matrix.board }}-${{ matrix.idf_version | replace('/', '_') }}
+          name: build-logs-${{ matrix.board }}-${{ matrix.idf_version }}
           path: |
             ~/micropython/ports/esp32/build-${{ matrix.board }}/log/
           retention-days: 5
