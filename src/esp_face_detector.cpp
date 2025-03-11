@@ -8,8 +8,8 @@ namespace mp_dl::detector {
 struct MP_FaceDetector {
     mp_obj_base_t base;
     std::shared_ptr<HumanFaceDetect> detector = nullptr;
-    img_width int = 320;
-    img_height int = 240;
+    int img_width = 320;
+    int img_height = 240;
 };
 
 // Constructor
