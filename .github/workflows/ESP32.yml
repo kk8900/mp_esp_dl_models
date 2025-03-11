@@ -124,3 +124,12 @@ jobs:
           name: firmware-${{ matrix.board }}-${{ matrix.idf_version }}
           path: ~/artifacts/**
           retention-days: 5
+
+      - name: Upload build logs on failure
+        if: failure()  # Dieser Schritt wird nur bei einem Fehlschlag ausgeführt
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ matrix.board }}-${{ matrix.idf_version }}
+          path: |
+            ~/micropython/ports/esp32/build-${{ matrix.board }}/log/
+          retention-days: 5
