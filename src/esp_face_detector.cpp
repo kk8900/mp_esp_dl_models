@@ -16,22 +16,22 @@ struct MP_FaceDetector {
 
 // Constructor
 static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    mp_arg_check_num(n_args, n_kw, 0, 2, false);
+    enum { ARG_img_width, ARG_img_height, ARG_return_features };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_width, MP_ARG_INT, {.u_int = 320} },
+        { MP_QSTR_height, MP_ARG_INT, {.u_int = 240} },
+        { MP_QSTR_features, MP_ARG_BOOL, {.u_bool = false} },
+    };
+
+    mp_arg_val_t parsed_args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed_args), allowed_args, parsed_args);
 
     MP_FaceDetector *self = mp_obj_malloc_with_finaliser(MP_FaceDetector, &mp_face_detector_type);
     self->detector = std::make_shared<HumanFaceDetect>();
 
-    if (n_args > 0) {
-        self->img_width = mp_obj_get_int(args[0]);
-    } else {
-        self->img_width = 320;
-    }
-
-    if (n_args > 1) {
-        self->img_height = mp_obj_get_int(args[1]);
-    } else {
-        self->img_height = 240;
-    }
+    self->img_width = parsed_args[ARG_img_width].u_int;
+    self->img_height = parsed_args[ARG_img_height].u_int;
+    self->return_features = parsed_args[ARG_return_features].u_bool;
 
     return MP_OBJ_FROM_PTR(self);
 }
@@ -82,8 +82,15 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
         tuple[2] = mp_obj_new_int(res.box[2]);
         tuple[3] = mp_obj_new_int(res.box[3]);
         mp_obj_list_append(list, mp_obj_new_tuple(4, tuple));
+
+        if (self->return_features) {
+            mp_obj_t features[10];
+            for (int i = 0; i < 10; ++i) {
+                features[i] = mp_obj_new_int(res.keypoint[i]);
+            }
+            mp_obj_list_append(list, mp_obj_new_tuple(10, features));
+        }
     }
-    debug_print("Detection results processed");
     return list;
 }
 static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_detect);
