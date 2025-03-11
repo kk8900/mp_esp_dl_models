@@ -1,4 +1,5 @@
 #include "esp_face_detector.h"
+#include "freertos/idf_additions.h"
 #include "human_face_detect.hpp"
 #include <memory>
 
