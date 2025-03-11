@@ -105,7 +105,7 @@ static MP_DEFINE_CONST_DICT(face_detector_locals_dict, face_detector_locals_dict
 // Print
 static void print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind)
 {
-    mp_printf(print, "Board");
+    mp_printf(print, "Face detector object");
 }
 
 } //namespace
