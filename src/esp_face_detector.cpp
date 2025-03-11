@@ -9,8 +9,9 @@ namespace mp_dl::detector {
 struct MP_FaceDetector {
     mp_obj_base_t base;
     std::shared_ptr<HumanFaceDetect> detector = nullptr;
-    int img_width = 320;
-    int img_height = 240;
+    int img_width;
+    int img_height;
+    bool return_features;
 };
 
 // Constructor
@@ -22,9 +23,14 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
 
     if (n_args > 0) {
         self->img_width = mp_obj_get_int(args[0]);
+    } else {
+        self->img_width = 320;
     }
+
     if (n_args > 1) {
         self->img_height = mp_obj_get_int(args[1]);
+    } else {
+        self->img_height = 240;
     }
 
     return MP_OBJ_FROM_PTR(self);
@@ -51,11 +57,13 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
     img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
 
     if (bufinfo.len != img.width * img.height * 3) {
-        dl::image::jpeg_img_t jpeg_img = {.data = (uint8_t *)bufinfo.buf,
-                                        .width = img.width,
-                                        .height = img.height,
-                                        .data_size = (uint32_t)bufinfo.len};
-        sw_decode_jpeg(jpeg_img, img, true);
+        mp_raise_ValueError("Frame buffer size does not match the image size");
+        // dl::image::jpeg_img_t jpeg_img;
+        // jpeg_img.data = static_cast<uint8_t *>(bufinfo.buf);
+        // jpeg_img.width = img.width;
+        // jpeg_img.height = img.height;
+        // jpeg_img.data_size = static_cast<uint32_t>(bufinfo.len);
+        // sw_decode_jpeg(jpeg_img, img, true);
     } else {
         img.data = (uint8_t *)bufinfo.buf;
     }
@@ -75,6 +83,7 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
         tuple[3] = mp_obj_new_int(res.box[3]);
         mp_obj_list_append(list, mp_obj_new_tuple(4, tuple));
     }
+    debug_print("Detection results processed");
     return list;
 }
 static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_detect);
