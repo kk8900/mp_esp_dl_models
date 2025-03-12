@@ -61,6 +61,7 @@ jobs:
           # cd ~/micropython/ports/esp32 && make V=1 submodules
 
       - name: Set up ESP-IDF
+        if: steps.cache_esp_idf.outputs.cache-hit != 'true'
         run: |
           cd ~
           git clone --depth 1 --branch release/v5.4 https://github.com/espressif/esp-idf.git

@@ -1,11 +1,10 @@
 #include "esp_face_detector.h"
 #include "freertos/idf_additions.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
 #include "human_face_detect.hpp"
 #include <memory>
-#include <queue>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
 
 namespace mp_dl::detector {
 
@@ -16,10 +15,9 @@ struct MP_FaceDetector {
     int img_width;
     int img_height;
     bool return_features;
-    std::queue<std::vector<dl::image::detect_result_t>> results_queue;
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool detection_in_progress = false;
+    QueueHandle_t results_queue;
+    TaskHandle_t detect_task_handle;
+    bool detection_in_progress;
 };
 
 // Constructor
@@ -40,7 +38,9 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
     self->img_width = parsed_args[ARG_img_width].u_int;
     self->img_height = parsed_args[ARG_img_height].u_int;
     self->return_features = parsed_args[ARG_return_features].u_bool;
-
+    self->results_queue = xQueueCreate(1, sizeof(std::vector<dl::image::detect_result_t>));
+    self->detect_task_handle = nullptr;
+    self->detection_in_progress = false;
     return MP_OBJ_FROM_PTR(self);
 }
 
@@ -48,6 +48,9 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
 static mp_obj_t face_detector_del(mp_obj_t self_in) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
     self->detector = nullptr;
+    if (self->results_queue) {
+        vQueueDelete(self->results_queue);
+    }
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_del_obj, face_detector_del);
@@ -97,17 +100,21 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
 }
 static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_detect);
 
-// Detect in thread method
-static void detect_in_thread(MP_FaceDetector *self, dl::image::img_t img) {
-    auto detect_results = self->detector->run(img);
-    {
-        std::lock_guard<std::mutex> lock(self->mtx);
-        self->results_queue.push(detect_results);
-        self->detection_in_progress = false;
+// Detect in task function
+static void detect_task(void *arg) {
+    MP_FaceDetector *self = static_cast<MP_FaceDetector *>(arg);
+    dl::image::img_t img;
+
+    while (true) {
+        if (xQueueReceive(self->results_queue, &img, portMAX_DELAY)) {
+            auto detect_results = self->detector->run(img);
+            xQueueSend(self->results_queue, &detect_results, portMAX_DELAY);
+            self->detection_in_progress = false;
+        }
     }
-    self->cv.notify_one();
 }
 
+// Detect in thread method
 static mp_obj_t face_detector_detect_async(mp_obj_t self_in, mp_obj_t framebuffer_obj) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
 
@@ -125,15 +132,17 @@ static mp_obj_t face_detector_detect_async(mp_obj_t self_in, mp_obj_t framebuffe
         img.data = (uint8_t *)bufinfo.buf;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(self->mtx);
-        if (self->detection_in_progress) {
-            mp_raise_ValueError("Detection already in progress");
-        }
-        self->detection_in_progress = true;
+    if (self->detection_in_progress) {
+        mp_raise_ValueError("Detection already in progress");
     }
 
-    std::thread(detect_in_thread, self, img).detach();
+    self->detection_in_progress = true;
+    xQueueSend(self->results_queue, &img, portMAX_DELAY);
+
+    if (self->detect_task_handle == nullptr) {
+        xTaskCreate(detect_task, "detect_task", 4096, self, 5, &self->detect_task_handle);
+    }
+
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_async_obj, face_detector_detect_async);
@@ -141,7 +150,6 @@ static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_async_obj, face_detect
 // Get status method
 static mp_obj_t face_detector_get_status(mp_obj_t self_in) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
-    std::lock_guard<std::mutex> lock(self->mtx);
     return mp_obj_new_bool(self->detection_in_progress);
 }
 static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_get_status_obj, face_detector_get_status);
@@ -149,15 +157,11 @@ static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_get_status_obj, face_detector
 // Get results method
 static mp_obj_t face_detector_get_results(mp_obj_t self_in) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
-    std::unique_lock<std::mutex> lock(self->mtx);
-    self->cv.wait(lock, [self] { return !self->detection_in_progress || !self->results_queue.empty(); });
 
-    if (self->results_queue.empty()) {
+    std::vector<dl::image::detect_result_t> detect_results;
+    if (xQueueReceive(self->results_queue, &detect_results, portMAX_DELAY) != pdTRUE) {
         return mp_const_none;
     }
-
-    auto detect_results = self->results_queue.front();
-    self->results_queue.pop();
 
     if (detect_results.size() == 0) {
         return mp_const_none;
