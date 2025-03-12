@@ -60,6 +60,14 @@ jobs:
           cd mpy-cross && make
           # cd ~/micropython/ports/esp32 && make V=1 submodules
 
+      - name: Set up ESP-IDF
+        run: |
+          cd ~
+          git clone --depth 1 --branch release/v5.4 https://github.com/espressif/esp-idf.git
+          git -C esp-idf submodule update --init --recursive --filter=tree:0
+          cd esp-idf && ./install.sh esp32s3
+          source ./export.sh
+
   build:
     needs: setup-environment
     runs-on: ubuntu-24.04
@@ -67,11 +75,9 @@ jobs:
       fail-fast: false
       matrix:
         board:
-          # - ESP32_GENERIC_S3-SPIRAM_OCT
-          - ESP32_GENERIC_S3
-        idf_version:
-          - v5.3
-          - v5.4
+          - ESP32_GENERIC_S3-SPIRAM_OCT
+          - ESP32_GENERIC_S3-FLASH_4M
+          - ESP32_GENERIC_S3-FLASH_16M
 
     steps:
       - name: Get MicroPython latest release
@@ -93,22 +99,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up ESP-IDF
-        run: |
-          cd ~
-          git clone --depth 1 --branch release/${{ matrix.idf_version }} https://github.com/espressif/esp-idf.git
-          git -C esp-idf submodule update --init --recursive --filter=tree:0
-          cd esp-idf && ./install.sh esp32s3
-          source ./export.sh
-
       - name: Build MicroPython
         run: |
           cd ~/micropython/ports/esp32
           source ~/esp-idf/export.sh
           
-          BOARD_NAME=${{ matrix.board }}
-          IDF_CMD="idf.py -D MICROPY_BOARD=$BOARD_NAME -D USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake -B build-$BOARD_NAME"
-
+          IFS='-' read -r BOARD_NAME BOARD_VARIANT <<< "${{ matrix.board }}"
+          if [ -n "${BOARD_VARIANT}" ]; then
+            IDF_CMD="idf.py -D MICROPY_BOARD=$BOARD_NAME -D USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake -D MICROPY_BOARD_VARIANT=$BOARD_VARIANT -B build-$BOARD_NAME"
+          else
+            IDF_CMD="idf.py -D MICROPY_BOARD=$BOARD_NAME -D USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake -B build-$BOARD_NAME"
+          fi
           make USER_C_MODULES=${{ github.workspace }}/src/micropython.cmake BOARD=$BOARD_NAME submodules
           eval "$IDF_CMD build VERBOSE=1"
 
@@ -116,12 +117,12 @@ jobs:
           python ../makeimg.py sdkconfig bootloader/bootloader.bin partition_table/partition-table.bin micropython.bin firmware.bin micropython.uf2
           
           mkdir -p ~/artifacts
-          mv firmware.bin ~/artifacts/firmware-${BOARD_NAME}-${{ matrix.idf_version }}.bin
+          mv firmware.bin ~/artifacts/firmware-${BOARD_NAME}.bin
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ matrix.board }}-${{ matrix.idf_version }}
+          name: firmware-${{ matrix.board }}
           path: ~/artifacts/**
           retention-days: 5
 
@@ -129,7 +130,7 @@ jobs:
         if: failure()  # Dieser Schritt wird nur bei einem Fehlschlag ausgeführt
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs-${{ matrix.board }}-${{ matrix.idf_version }}
+          name: build-logs-${{ matrix.board }}
           path: |
             ~/micropython/ports/esp32/build-${{ matrix.board }}/log/
           retention-days: 5
