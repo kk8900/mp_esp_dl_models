@@ -151,7 +151,7 @@ static mp_obj_t face_detector_detect_async(mp_obj_t self_in, mp_obj_t framebuffe
     xQueueSend(self->image_queue, &img, portMAX_DELAY);
 
     if (self->detect_task_handle == nullptr) {
-        xTaskCreate(detect_task, "detect_task", 4096, self, 5, &self->detect_task_handle);
+        xTaskCreatePinnedToCore(detect_task, "detect_task", 4096, self, ESP_TASK_PRIO_MIN + 2, &self->detect_task_handle, 0);
     }
 
     return mp_const_none;
