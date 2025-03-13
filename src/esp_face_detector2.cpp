@@ -41,6 +41,14 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
     self->return_features = parsed_args[ARG_return_features].u_bool;
     self->detect_task_handle = nullptr;
     self->detection_in_progress = false;
+
+    // Initialize queues
+    self->results_queue = xQueueCreate(1, sizeof(std::list<dl::detect::result_t>));
+    self->image_queue = xQueueCreate(1, sizeof(dl::image::img_t));
+    if (self->results_queue == NULL || self->image_queue == NULL) {
+        mp_raise_msg(&mp_type_RuntimeError, "Failed to create queues");
+    }
+
     return MP_OBJ_FROM_PTR(self);
 }
 
@@ -124,20 +132,6 @@ static mp_obj_t face_detector_detect_async(mp_obj_t self_in, mp_obj_t framebuffe
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
 
-    if (self->results_queue == NULL) {
-        self->results_queue = xQueueCreate(1, sizeof(std::list<dl::detect::result_t>));
-        if (self->results_queue == NULL) {
-            mp_raise_msg(&mp_type_RuntimeError, "Failed to create results queue");
-        }
-    }
-
-    if (self->image_queue == NULL) {
-        self->image_queue = xQueueCreate(1, sizeof(dl::image::img_t));
-        if (self->image_queue == NULL) {
-            mp_raise_msg(&mp_type_RuntimeError, "Failed to create image queue");
-        }
-    }
-
     dl::image::img_t img;
     img.width = self->img_width;
     img.height = self->img_height;
@@ -175,7 +169,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_get_status_obj, face_detector
 static mp_obj_t face_detector_get_results(mp_obj_t self_in) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
 
-    std::vector<dl::image::detect_result_t> detect_results;
+    std::list<dl::detect::result_t> detect_results;
     if (xQueueReceive(self->results_queue, &detect_results, portMAX_DELAY) != pdTRUE) {
         return mp_const_none;
     }
