@@ -102,6 +102,8 @@ jobs:
 
       - name: Build MicroPython
         run: |
+          cd ${{ github.workspace }} && cd ..
+          git clone https://github.com/cnadler86/mp_jpeg.git
           cd ~/micropython/ports/esp32
           source ~/esp-idf/export.sh
           
