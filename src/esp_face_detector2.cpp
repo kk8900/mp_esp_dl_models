@@ -162,7 +162,7 @@ static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_async_obj, face_detect
 // Get status method
 static mp_obj_t face_detector_get_status(mp_obj_t self_in) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
-    return mp_obj_new_bool(self->detection_in_progress);
+    return mp_obj_new_bool(uxQueueMessagesWaiting(self->results_queue) > 0);
 }
 static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_get_status_obj, face_detector_get_status);
 
