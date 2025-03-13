@@ -16,6 +16,7 @@ struct MP_FaceDetector {
     int img_height;
     bool return_features;
     QueueHandle_t results_queue;
+    QueueHandle_t image_queue;
     TaskHandle_t detect_task_handle;
     bool detection_in_progress;
 };
@@ -38,7 +39,6 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
     self->img_width = parsed_args[ARG_img_width].u_int;
     self->img_height = parsed_args[ARG_img_height].u_int;
     self->return_features = parsed_args[ARG_return_features].u_bool;
-    self->results_queue = xQueueCreate(1, sizeof(std::vector<dl::image::detect_result_t>));
     self->detect_task_handle = nullptr;
     self->detection_in_progress = false;
     return MP_OBJ_FROM_PTR(self);
@@ -50,6 +50,9 @@ static mp_obj_t face_detector_del(mp_obj_t self_in) {
     self->detector = nullptr;
     if (self->results_queue) {
         vQueueDelete(self->results_queue);
+    }
+    if (self->image_queue) {
+        vQueueDelete(self->image_queue);
     }
     return mp_const_none;
 }
@@ -101,13 +104,13 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
 static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_detect);
 
 // Detect in task function
-static void detect_task(void *arg) {
-    MP_FaceDetector *self = static_cast<MP_FaceDetector *>(arg);
+void detect_task(void *pvParameters) {
+    MP_FaceDetector *self = static_cast<MP_FaceDetector *>(pvParameters);
     dl::image::img_t img;
 
-    while (true) {
-        if (xQueueReceive(self->results_queue, &img, portMAX_DELAY)) {
-            auto detect_results = self->detector->run(img);
+    while (self->detection_in_progress) {
+        if (xQueueReceive(self->image_queue, &img, portMAX_DELAY) == pdPASS) {
+            auto &detect_results = self->detector->run(img);
             xQueueSend(self->results_queue, &detect_results, portMAX_DELAY);
             self->detection_in_progress = false;
         }
@@ -120,6 +123,20 @@ static mp_obj_t face_detector_detect_async(mp_obj_t self_in, mp_obj_t framebuffe
 
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
+
+    if (self->results_queue == NULL) {
+        self->results_queue = xQueueCreate(1, sizeof(std::list<dl::detect::result_t>));
+        if (self->results_queue == NULL) {
+            mp_raise_msg(&mp_type_RuntimeError, "Failed to create results queue");
+        }
+    }
+
+    if (self->image_queue == NULL) {
+        self->image_queue = xQueueCreate(1, sizeof(dl::image::img_t));
+        if (self->image_queue == NULL) {
+            mp_raise_msg(&mp_type_RuntimeError, "Failed to create image queue");
+        }
+    }
 
     dl::image::img_t img;
     img.width = self->img_width;
@@ -137,7 +154,7 @@ static mp_obj_t face_detector_detect_async(mp_obj_t self_in, mp_obj_t framebuffe
     }
 
     self->detection_in_progress = true;
-    xQueueSend(self->results_queue, &img, portMAX_DELAY);
+    xQueueSend(self->image_queue, &img, portMAX_DELAY);
 
     if (self->detect_task_handle == nullptr) {
         xTaskCreate(detect_task, "detect_task", 4096, self, 5, &self->detect_task_handle);
