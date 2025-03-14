@@ -8,25 +8,30 @@ namespace mp_dl::detector {
 // Object
 struct MP_FaceDetector {
     mp_obj_base_t base;
-    std::shared_ptr<HumanFaceDetect> detector = nullptr;
+    std::shared_ptr<HumanFaceDetect> model = nullptr;
     dl::image::img_t img;
     bool return_features;
 };
 
 // Constructor
 static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    enum { ARG_img_width, ARG_img_height, ARG_return_features };
+    enum { ARG_img_width, ARG_img_height, ARG_return_features, ARG_model };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_width, MP_ARG_INT, {.u_int = 320} },
         { MP_QSTR_height, MP_ARG_INT, {.u_int = 240} },
         { MP_QSTR_features, MP_ARG_BOOL, {.u_bool = false} },
+        { MP_QSTR_model, MP_ARG_INT, {.u_int = 0} },
     };
 
     mp_arg_val_t parsed_args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed_args), allowed_args, parsed_args);
 
     MP_FaceDetector *self = mp_obj_malloc_with_finaliser(MP_FaceDetector, &mp_face_detector_type);
-    self->detector = std::make_shared<HumanFaceDetect>();
+    self->model = std::make_shared<HumanFaceDetect>();
+    
+    if (!self->model) {
+        mp_raise_msg(&mp_type_RuntimeError, "Failed to create model instance");
+    }
 
     self->img.width = parsed_args[ARG_img_width].u_int;
     self->img.height = parsed_args[ARG_img_height].u_int;
@@ -41,7 +46,7 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
 // Destructor
 static mp_obj_t face_detector_del(mp_obj_t self_in) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
-    self->detector = nullptr;
+    self->model = nullptr;
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_del_obj, face_detector_del);
@@ -55,17 +60,11 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
 
     if (bufinfo.len != self->img.width * self->img.height * 3) {
         mp_raise_ValueError("Frame buffer size does not match the image size");
-        // dl::image::jpeg_img_t jpeg_img;
-        // jpeg_img.data = static_cast<uint8_t *>(bufinfo.buf);
-        // jpeg_img.width = img.width;
-        // jpeg_img.height = img.height;
-        // jpeg_img.data_size = static_cast<uint32_t>(bufinfo.len);
-        // sw_decode_jpeg(jpeg_img, img, true);
     } else {
         self->img.data = (uint8_t *)bufinfo.buf;
     }
 
-    auto &detect_results = self->detector->run(self->img);
+    auto &detect_results = self->model->run(self->img);
 
     if (detect_results.size() == 0) {
         return mp_const_none;
@@ -73,20 +72,24 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
 
     mp_obj_t list = mp_obj_new_list(0, NULL);
     for (const auto &res : detect_results) {
-        mp_obj_t tuple[4];
-        tuple[0] = mp_obj_new_int(res.box[0]);
-        tuple[1] = mp_obj_new_int(res.box[1]);
-        tuple[2] = mp_obj_new_int(res.box[2]);
-        tuple[3] = mp_obj_new_int(res.box[3]);
-        mp_obj_list_append(list, mp_obj_new_tuple(4, tuple));
+        mp_obj_t dict = mp_obj_new_dict(0);
+        mp_obj_dict_store(dict, mp_obj_new_str("score", 5), mp_obj_new_float(res.score));
+        mp_obj_dict_store(dict, mp_obj_new_str("x1", 2), mp_obj_new_int(res.box[0]));
+        mp_obj_dict_store(dict, mp_obj_new_str("y1", 2), mp_obj_new_int(res.box[1]));
+        mp_obj_dict_store(dict, mp_obj_new_str("x2", 2), mp_obj_new_int(res.box[2]));
+        mp_obj_dict_store(dict, mp_obj_new_str("y2", 2), mp_obj_new_int(res.box[3]));
 
         if (self->return_features) {
-            mp_obj_t features[10];
-            for (int i = 0; i < 10; ++i) {
-                features[i] = mp_obj_new_int(res.keypoint[i]);
-            }
-            mp_obj_list_append(list, mp_obj_new_tuple(10, features));
+            mp_obj_t features_dict = mp_obj_new_dict(0);
+            mp_obj_dict_store(features_dict, mp_obj_new_str("left_eye", 9), mp_obj_new_tuple(2, (mp_obj_t[]){mp_obj_new_int(res.keypoint[0]), mp_obj_new_int(res.keypoint[1])}));
+            mp_obj_dict_store(features_dict, mp_obj_new_str("right_eye", 10), mp_obj_new_tuple(2, (mp_obj_t[]){mp_obj_new_int(res.keypoint[2]), mp_obj_new_int(res.keypoint[3])}));
+            mp_obj_dict_store(features_dict, mp_obj_new_str("nose", 4), mp_obj_new_tuple(2, (mp_obj_t[]){mp_obj_new_int(res.keypoint[4]), mp_obj_new_int(res.keypoint[5])}));
+            mp_obj_dict_store(features_dict, mp_obj_new_str("left_mouth", 11), mp_obj_new_tuple(2, (mp_obj_t[]){mp_obj_new_int(res.keypoint[6]), mp_obj_new_int(res.keypoint[7])}));
+            mp_obj_dict_store(features_dict, mp_obj_new_str("right_mouth", 12), mp_obj_new_tuple(2, (mp_obj_t[]){mp_obj_new_int(res.keypoint[8]), mp_obj_new_int(res.keypoint[9])}));
+            mp_obj_dict_store(dict, mp_obj_new_str("features", 8), features_dict);
         }
+
+        mp_obj_list_append(list, dict);
     }
     return list;
 }
