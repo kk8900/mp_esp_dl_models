@@ -9,8 +9,7 @@ namespace mp_dl::detector {
 struct MP_FaceDetector {
     mp_obj_base_t base;
     std::shared_ptr<HumanFaceDetect> detector = nullptr;
-    int img_width;
-    int img_height;
+    dl::image::img_t img;
     bool return_features;
 };
 
@@ -29,8 +28,11 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
     MP_FaceDetector *self = mp_obj_malloc_with_finaliser(MP_FaceDetector, &mp_face_detector_type);
     self->detector = std::make_shared<HumanFaceDetect>();
 
-    self->img_width = parsed_args[ARG_img_width].u_int;
-    self->img_height = parsed_args[ARG_img_height].u_int;
+    self->img.width = parsed_args[ARG_img_width].u_int;
+    self->img.height = parsed_args[ARG_img_height].u_int;
+    self->img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
+    self->img.data = nullptr;
+
     self->return_features = parsed_args[ARG_return_features].u_bool;
 
     return MP_OBJ_FROM_PTR(self);
@@ -51,12 +53,7 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
 
-    dl::image::img_t img;
-    img.width = self->img_width;
-    img.height = self->img_height;
-    img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
-
-    if (bufinfo.len != img.width * img.height * 3) {
+    if (bufinfo.len != self->img.width * self->img.height * 3) {
         mp_raise_ValueError("Frame buffer size does not match the image size");
         // dl::image::jpeg_img_t jpeg_img;
         // jpeg_img.data = static_cast<uint8_t *>(bufinfo.buf);
@@ -65,10 +62,10 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
         // jpeg_img.data_size = static_cast<uint32_t>(bufinfo.len);
         // sw_decode_jpeg(jpeg_img, img, true);
     } else {
-        img.data = (uint8_t *)bufinfo.buf;
+        self->img.data = (uint8_t *)bufinfo.buf;
     }
 
-    auto &detect_results = self->detector->run(img);
+    auto &detect_results = self->detector->run(self->img);
 
     if (detect_results.size() == 0) {
         return mp_const_none;

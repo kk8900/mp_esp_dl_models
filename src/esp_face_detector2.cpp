@@ -117,13 +117,13 @@ void detect_task(void *pvParameters) {
     MP_FaceDetector *self = static_cast<MP_FaceDetector *>(pvParameters);
     dl::image::img_t img;
 
-    while (self->detection_in_progress) {
-        if (xQueueReceive(self->image_queue, &img, portMAX_DELAY) == pdPASS) {
-            auto &detect_results = self->detector->run(img);
-            xQueueSend(self->results_queue, &detect_results, portMAX_DELAY);
-            self->detection_in_progress = false;
-        }
+    if (xQueueReceive(self->image_queue, &img, portMAX_DELAY) == pdPASS) {
+        auto &detect_results = self->detector->run(img);
+        xQueueSend(self->results_queue, &detect_results, portMAX_DELAY);
     }
+    
+    self->detect_task_handle = nullptr;
+    vTaskDelete(NULL);
 }
 
 // Detect in thread method
