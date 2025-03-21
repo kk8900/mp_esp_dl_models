@@ -1,9 +1,9 @@
-#include "esp_mp_dl.h"
+#include "mp_esp_dl.h"
 #include "freertos/idf_additions.h"
 #include "human_face_detect.hpp"
 #include <memory>
 
-namespace mp_dl::detector {
+namespace mp_esp_dl::detector {
 
 // Object
 struct MP_FaceDetector {
@@ -110,7 +110,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     mp_face_detector_type,
     MP_QSTR_FaceDetector,
     MP_TYPE_FLAG_NONE,
-    make_new, (const void *)mp_dl::detector::face_detector_make_new,
-    print, (const void *)mp_dl::detector::print,
-    locals_dict, &mp_dl::detector::face_detector_locals_dict
+    make_new, (const void *)mp_esp_dl::detector::face_detector_make_new,
+    print, (const void *)mp_esp_dl::detector::print,
+    locals_dict, &mp_esp_dl::detector::face_detector_locals_dict
 );

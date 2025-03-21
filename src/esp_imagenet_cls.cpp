@@ -1,11 +1,11 @@
-#include "esp_mp_dl.h"
+#include "mp_esp_dl.h"
 #include "freertos/idf_additions.h"
 #include "imagenet_cls.hpp"
 #include <memory>
 
 #if MP_DL_IMAGENET_CLS_ENABLED
 
-namespace mp_dl::imagenet {
+namespace mp_esp_dl::imagenet {
 
 // Object
 struct MP_ImageNetCls {
@@ -96,9 +96,9 @@ MP_DEFINE_CONST_OBJ_TYPE(
     mp_image_net_type,
     MP_QSTR_ImageNet,
     MP_TYPE_FLAG_NONE,
-    make_new, (const void *)mp_dl::imagenet::image_net_make_new,
-    print, (const void *)mp_dl::imagenet::print,
-    locals_dict, &mp_dl::imagenet::image_net_locals_dict
+    make_new, (const void *)mp_esp_dl::imagenet::image_net_make_new,
+    print, (const void *)mp_esp_dl::imagenet::print,
+    locals_dict, &mp_esp_dl::imagenet::image_net_locals_dict
 );
 
 #endif // MP_DL_IMAGENET_CLS_ENABLED
