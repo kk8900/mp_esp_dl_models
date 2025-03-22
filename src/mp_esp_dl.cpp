@@ -1,5 +1,4 @@
 #include "mp_esp_dl.hpp"
-#include "dl_image_define.hpp"
 #include <memory>
 
 namespace mp_esp_dl {
