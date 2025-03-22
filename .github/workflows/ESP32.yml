@@ -108,7 +108,6 @@ jobs:
         run: |
           source ${{ env.ESP_IDF_DIR }}/export.sh
           cd ${{ github.workspace }} && cd ..
-          git clone https://github.com/cnadler86/mp_jpeg.git
           git clone https://github.com/cnadler86/micropython-camera-API.git
           
           cd ${{ github.workspace }}/boards/
