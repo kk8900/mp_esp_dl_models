@@ -8,6 +8,7 @@ target_sources(usermod_mp_esp_dl INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/esp_face_detector.cpp
     ${CMAKE_CURRENT_LIST_DIR}/esp_imagenet_cls.cpp
     ${CMAKE_CURRENT_LIST_DIR}/mp_esp_dl_module.c
+    ${CMAKE_CURRENT_LIST_DIR}/mp_esp_dl.cpp
 )
 
 target_include_directories(usermod_mp_esp_dl INTERFACE

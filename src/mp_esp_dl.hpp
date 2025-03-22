@@ -7,17 +7,6 @@ extern "C" {
 #include "py/obj.h"
 #include "py/runtime.h"
 
-#ifdef __cplusplus
-}
-#endif
-
-#include "dl_image_define.hpp"
-#include <memory>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern const mp_obj_type_t mp_face_detector_type;
 extern const mp_obj_type_t mp_image_net_type;
 
@@ -37,28 +26,9 @@ extern const mp_obj_type_t mp_image_net_type;
 }
 #endif
 
-void initialize_img(dl::image::img_t &img, int width, int height) {
-    img.width = width;
-    img.height = height;
-    img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
-    img.data = nullptr;
-}
+namespace mp_esp_dl {
+    void initialize_img(dl::image::img_t &img, int width, int height)
 
-template <typename T>
-T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj, dl::image::img_t &img) {
-    // Cast self_in to the correct type
-    T *self = static_cast<T *>(MP_OBJ_TO_PTR(self_in));
-
-    // Validate the framebuffer
-    mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
-
-    if (bufinfo.len != img.width * img.height * 3) {
-        mp_raise_ValueError("Frame buffer size does not match the image size with an RGB888 pixel format");
-    }
-
-    // Assign the buffer data to the image
-    img.data = (uint8_t *)bufinfo.buf;
-
-    return self;
+    template <typename T>
+    T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj, dl::image::img_t &img)
 }
