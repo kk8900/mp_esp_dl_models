@@ -1,4 +1,4 @@
-#include "mp_esp_dl.h"
+#include "mp_esp_dl.hpp"
 #include "freertos/idf_additions.h"
 #include "imagenet_cls.hpp"
 #include <memory>
