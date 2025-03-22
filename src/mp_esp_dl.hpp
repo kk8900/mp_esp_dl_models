@@ -36,3 +36,10 @@ extern const mp_obj_type_t mp_image_net_type;
 #ifdef __cplusplus
 }
 #endif
+
+void initialize_img(dl::image::img_t &img, int width, int height) {
+    img.width = width;
+    img.height = height;
+    img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
+    img.data = nullptr;
+}
