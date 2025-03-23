@@ -50,6 +50,12 @@ static mp_obj_t face_detector_del(mp_obj_t self_in) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_del_obj, face_detector_del);
 
+// Set width and height
+static mp_obj_t face_detector_set_width_and_height(mp_obj_t self_in, mp_obj_t width_obj, mp_obj_t height_obj) {
+    set_width_and_height<MP_FaceDetector>(self_in, mp_obj_get_int(width_obj), mp_obj_get_int(height_obj));
+}
+static MP_DEFINE_CONST_FUN_OBJ_3_CXX(face_detector_set_width_and_height_obj, face_detector_set_width_and_height);
+
 // Detect method
 static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj) {
     // MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
@@ -93,6 +99,7 @@ static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_det
 // Local dict
 static const mp_rom_map_elem_t face_detector_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_detect), MP_ROM_PTR(&face_detector_detect_obj) },
+    { MP_ROM_QSTR(MP_QSTR_pixelformat), MP_ROM_PTR(&face_detector_set_width_and_height_obj) },
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&face_detector_del_obj) },
 };
 static MP_DEFINE_CONST_DICT(face_detector_locals_dict, face_detector_locals_dict_table);

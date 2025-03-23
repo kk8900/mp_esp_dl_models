@@ -50,16 +50,17 @@ static MP_DEFINE_CONST_FUN_OBJ_1_CXX(image_net_del_obj, image_net_del);
 
 // Detect method
 static mp_obj_t image_net_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj) {
-    MP_ImageNetCls *self = static_cast<MP_ImageNetCls *>(MP_OBJ_TO_PTR(self_in));
+    // MP_ImageNetCls *self = static_cast<MP_ImageNetCls *>(MP_OBJ_TO_PTR(self_in));
 
-    mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
+    // mp_buffer_info_t bufinfo;
+    // mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
 
-    if (bufinfo.len != self->img.width * self->img.height * 3) {
-        mp_raise_ValueError("Frame buffer size does not match the image size");
-    } else {
-        self->img.data = (uint8_t *)bufinfo.buf;
-    }
+    // if (bufinfo.len != self->img.width * self->img.height * 3) {
+    //     mp_raise_ValueError("Frame buffer size does not match the image size");
+    // } else {
+    //     self->img.data = (uint8_t *)bufinfo.buf;
+    // }
+    MP_ImageNetCls *self = mp_esp_dl::get_and_validate_framebuffer<MP_ImageNetCls>(self_in, framebuffer_obj);
 
     auto &detect_results = self->model->run(self->img);
 
@@ -86,7 +87,7 @@ static MP_DEFINE_CONST_DICT(image_net_locals_dict, image_net_locals_dict_table);
 // Print
 static void print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind)
 {
-    mp_printf(print, "Face detector object");
+    mp_printf(print, "Imagenet classifier object");
 }
 
 } //namespace
