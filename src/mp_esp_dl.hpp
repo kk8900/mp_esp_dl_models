@@ -33,5 +33,5 @@ namespace mp_esp_dl {
     void initialize_img(dl::image::img_t &img, int width, int height);
 
     template <typename T>
-    T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj, dl::image::img_t &img);
+    T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj);
 }
