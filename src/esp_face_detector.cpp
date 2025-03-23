@@ -62,7 +62,7 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
     // } else {
     //     self->img.data = (uint8_t *)bufinfo.buf;
     // }
-    MP_FaceDetector *self = get_and_validate_framebuffer<MP_FaceDetector>(self_in, framebuffer_obj);
+    MP_FaceDetector *self = mp_esp_dl::get_and_validate_framebuffer<MP_FaceDetector>(self_in, framebuffer_obj);
 
     auto &detect_results = self->model->run(self->img);
 
