@@ -29,23 +29,24 @@ if(DEFINED MP_CAMERA_SRC AND EXISTS "${MP_CAMERA_SRC}")
     include(${MP_CAMERA_SRC})
 else()
     message(WARNING "MP_CAMERA_SRC not found or not defined!")
-endif()
-
-# Check if MP_JPEG_DIR is set or if mp_jpeg directory exists two levels up
-if(DEFINED MP_JPEG_DIR AND EXISTS "${MP_JPEG_DIR}")
+    # Check if MP_JPEG_DIR is set or if mp_jpeg directory exists two levels up (Camera includes this normally)
+    if(DEFINED MP_JPEG_DIR AND EXISTS "${MP_JPEG_DIR}")
     message(STATUS "Using user-defined MP_JPEG_DIR: ${MP_JPEG_DIR}")
     set(MP_JPEG_SRC "${MP_JPEG_DIR}/src/micropython.cmake")
-elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../mp_jpeg")
+    elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../mp_jpeg")
     message(STATUS "Found mp_jpeg directory at same level as mp_esp_dl module")
     set(MP_JPEG_SRC "${CMAKE_CURRENT_LIST_DIR}/../../mp_jpeg/src/micropython.cmake")
+    endif()
+
+    # Add MP_JPEG_SRC cmake file to target_sources if it is defined
+    if(DEFINED MP_JPEG_SRC AND EXISTS "${MP_JPEG_SRC}")
+    include(${MP_JPEG_SRC})
+    else()
+    message(WARNING "MP_JPEG_SRC not found or not defined!")
+    endif()
 endif()
 
-# Add MP_JPEG_SRC cmake file to target_sources if it is defined
-if(DEFINED MP_JPEG_SRC AND EXISTS "${MP_JPEG_SRC}")
-    include(${MP_JPEG_SRC})
-else()
-    message(WARNING "MP_JPEG_SRC not found or not defined!")
-endif()
+
 
 if (MP_DL_IMAGENET_CLS_ENABLED)
     target_compile_definitions(usermod_mp_esp_dl INTERFACE MP_DL_IMAGENET_CLS_ENABLED=1)
