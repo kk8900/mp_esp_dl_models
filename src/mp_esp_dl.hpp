@@ -33,5 +33,33 @@ namespace mp_esp_dl {
     void initialize_img(dl::image::img_t &img, int width, int height);
 
     template <typename T>
-    T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj);
+    T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj) {
+        // Cast self_in to the correct type
+        T *self = static_cast<T *>(MP_OBJ_TO_PTR(self_in));
+
+        // Validate the framebuffer
+        mp_buffer_info_t bufinfo;
+        mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
+
+        if (bufinfo.len != self->img.width * self->img.height * 3) {
+            mp_raise_ValueError("Frame buffer size does not match the image size with an RGB888 pixel format");
+        }
+
+        // Assign the buffer data to the image
+        self->img.data = (uint8_t *)bufinfo.buf;
+
+        return self;
+    }
+
+    template <typename T>
+    void set_width_and_height(mp_obj_t self_in, int width, int height) {
+        // Cast self_in to the correct type
+        T *self = static_cast<T *>(MP_OBJ_TO_PTR(self_in));
+
+        // Set the width and height
+        self->img.width = width;
+        self->img.height = height;
+        self->img.data = nullptr;
+
+    }
 }
