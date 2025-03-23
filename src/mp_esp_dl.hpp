@@ -1,5 +1,8 @@
 #pragma once
 
+#include "dl_image_define.hpp"
+#include <memory>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,8 +28,6 @@ extern const mp_obj_type_t mp_image_net_type;
 #ifdef __cplusplus
 }
 #endif
-
-#include "dl_image_define.hpp"
 
 namespace mp_esp_dl {
     void initialize_img(dl::image::img_t &img, int width, int height);

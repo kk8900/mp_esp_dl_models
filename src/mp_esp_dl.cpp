@@ -1,5 +1,4 @@
 #include "mp_esp_dl.hpp"
-#include <memory>
 
 namespace mp_esp_dl {
     void initialize_img(dl::image::img_t &img, int width, int height) {
@@ -10,7 +9,7 @@ namespace mp_esp_dl {
     }
 
     template <typename T>
-    T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj, dl::image::img_t &img) {
+    T *get_and_validate_framebuffer(mp_obj_t self_in, mp_obj_t framebuffer_obj) {
         // Cast self_in to the correct type
         T *self = static_cast<T *>(MP_OBJ_TO_PTR(self_in));
 
@@ -18,12 +17,12 @@ namespace mp_esp_dl {
         mp_buffer_info_t bufinfo;
         mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
 
-        if (bufinfo.len != img.width * img.height * 3) {
+        if (bufinfo.len != self->img.width * self->img.height * 3) {
             mp_raise_ValueError("Frame buffer size does not match the image size with an RGB888 pixel format");
         }
 
         // Assign the buffer data to the image
-        img.data = (uint8_t *)bufinfo.buf;
+        self->img.data = (uint8_t *)bufinfo.buf;
 
         return self;
     }

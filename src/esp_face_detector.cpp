@@ -1,7 +1,6 @@
 #include "mp_esp_dl.hpp"
 #include "freertos/idf_additions.h"
 #include "human_face_detect.hpp"
-#include <memory>
 
 namespace mp_esp_dl::detector {
 
@@ -53,16 +52,17 @@ static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_del_obj, face_detector_del);
 
 // Detect method
 static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj) {
-    MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
+    // MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
 
-    mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
+    // mp_buffer_info_t bufinfo;
+    // mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
 
-    if (bufinfo.len != self->img.width * self->img.height * 3) {
-        mp_raise_ValueError("Frame buffer size does not match the image size");
-    } else {
-        self->img.data = (uint8_t *)bufinfo.buf;
-    }
+    // if (bufinfo.len != self->img.width * self->img.height * 3) {
+    //     mp_raise_ValueError("Frame buffer size does not match the image size");
+    // } else {
+    //     self->img.data = (uint8_t *)bufinfo.buf;
+    // }
+    MP_FaceDetector *self = get_and_validate_framebuffer<MP_FaceDetector>(self_in, framebuffer_obj);
 
     auto &detect_results = self->model->run(self->img);
 
