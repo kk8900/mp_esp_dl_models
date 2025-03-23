@@ -60,6 +60,5 @@ namespace mp_esp_dl {
         self->img.width = width;
         self->img.height = height;
         self->img.data = nullptr;
-
     }
 }
