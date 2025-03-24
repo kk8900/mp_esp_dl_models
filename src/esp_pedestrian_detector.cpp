@@ -34,8 +34,6 @@ static mp_obj_t pedestrian_detector_make_new(const mp_obj_type_t *type, size_t n
 
     mp_esp_dl::initialize_img(self->img, parsed_args[ARG_img_width].u_int, parsed_args[ARG_img_height].u_int);
 
-    self->return_features = parsed_args[ARG_return_features].u_bool;
-
     return MP_OBJ_FROM_PTR(self);
 }
 
