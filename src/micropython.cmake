@@ -6,6 +6,7 @@ add_dependencies(usermod_mp_esp_dl human_face_detect)
 
 target_sources(usermod_mp_esp_dl INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/esp_face_detector.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/esp_pedestrian_detector.cpp
     ${CMAKE_CURRENT_LIST_DIR}/esp_imagenet_cls.cpp
     ${CMAKE_CURRENT_LIST_DIR}/mp_esp_dl_module.c
     ${CMAKE_CURRENT_LIST_DIR}/mp_esp_dl.cpp
@@ -31,18 +32,18 @@ else()
     message(WARNING "MP_CAMERA_SRC not found or not defined!")
     # Check if MP_JPEG_DIR is set or if mp_jpeg directory exists two levels up (Camera includes this normally)
     if(DEFINED MP_JPEG_DIR AND EXISTS "${MP_JPEG_DIR}")
-    message(STATUS "Using user-defined MP_JPEG_DIR: ${MP_JPEG_DIR}")
-    set(MP_JPEG_SRC "${MP_JPEG_DIR}/src/micropython.cmake")
+        message(STATUS "Using user-defined MP_JPEG_DIR: ${MP_JPEG_DIR}")
+        set(MP_JPEG_SRC "${MP_JPEG_DIR}/src/micropython.cmake")
     elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../mp_jpeg")
-    message(STATUS "Found mp_jpeg directory at same level as mp_esp_dl module")
-    set(MP_JPEG_SRC "${CMAKE_CURRENT_LIST_DIR}/../../mp_jpeg/src/micropython.cmake")
+        message(STATUS "Found mp_jpeg directory at same level as mp_esp_dl module")
+        set(MP_JPEG_SRC "${CMAKE_CURRENT_LIST_DIR}/../../mp_jpeg/src/micropython.cmake")
     endif()
 
     # Add MP_JPEG_SRC cmake file to target_sources if it is defined
     if(DEFINED MP_JPEG_SRC AND EXISTS "${MP_JPEG_SRC}")
-    include(${MP_JPEG_SRC})
+        include(${MP_JPEG_SRC})
     else()
-    message(WARNING "MP_JPEG_SRC not found or not defined!")
+        message(WARNING "MP_JPEG_SRC not found or not defined!")
     endif()
 endif()
 

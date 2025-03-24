@@ -18,7 +18,7 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_width, MP_ARG_INT, {.u_int = 320} },
         { MP_QSTR_height, MP_ARG_INT, {.u_int = 240} },
-        { MP_QSTR_features, MP_ARG_BOOL, {.u_bool = false} },
+        { MP_QSTR_features, MP_ARG_BOOL, {.u_bool = true} },
     };
 
     mp_arg_val_t parsed_args[MP_ARRAY_SIZE(allowed_args)];
@@ -79,6 +79,7 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
 
     mp_obj_t list = mp_obj_new_list(0, NULL);
     for (const auto &res : detect_results) {
+        mp_obj_list_append(list, mp_obj_new_float(res.score));
         mp_obj_t tuple[4];
         for (int i = 0; i < 4; ++i) {
             tuple[i] = mp_obj_new_int(res.box[i]);
