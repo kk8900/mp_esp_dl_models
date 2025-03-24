@@ -30,6 +30,8 @@ extern const mp_obj_type_t mp_pedestrian_detector_type;
 }
 #endif
 
+# ifdef __cplusplus
+
 namespace mp_esp_dl {
     void initialize_img(dl::image::img_t &img, int width, int height);
 
@@ -63,3 +65,5 @@ namespace mp_esp_dl {
         self->img.data = nullptr;
     }
 }
+
+#endif
