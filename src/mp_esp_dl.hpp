@@ -1,9 +1,8 @@
 #pragma once
 
+#ifdef __cplusplus
 #include "dl_image_define.hpp"
 #include <memory>
-
-#ifdef __cplusplus
 extern "C" {
 #endif
 
