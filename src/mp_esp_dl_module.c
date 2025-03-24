@@ -17,4 +17,4 @@ const mp_obj_module_t mp_esp_dl_module = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t *)&module_globals,
 };
-MP_REGISTER_MODULE(MP_QSTR_mp_dl, mp_esp_dl_module);
+MP_REGISTER_MODULE(MP_QSTR_espdl, mp_esp_dl_module);
