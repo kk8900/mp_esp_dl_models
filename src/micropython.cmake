@@ -47,10 +47,12 @@ else()
     endif()
 endif()
 
-
-
 if (MP_DL_IMAGENET_CLS_ENABLED)
     target_compile_definitions(usermod_mp_esp_dl INTERFACE MP_DL_IMAGENET_CLS_ENABLED=1)
+endif()
+
+if (MP_DL_PEDESTRISN_DETECTOR_ENABLED)
+    target_compile_definitions(usermod_mp_esp_dl INTERFACE MP_DL_PEDESTRISN_DETECTOR_ENABLED=1)
 endif()
 
 target_link_libraries(usermod INTERFACE usermod_mp_esp_dl)
