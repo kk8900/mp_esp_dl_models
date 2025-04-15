@@ -5,10 +5,7 @@
 namespace mp_esp_dl::FaceDetector {
 
 // Object
-struct MP_FaceDetector {
-    mp_obj_base_t base;
-    std::shared_ptr<HumanFaceDetect> model = nullptr;
-    dl::image::img_t img;
+struct MP_FaceDetector : public MP_DetectorBase<HumanFaceDetect> {
     bool return_features;
 };
 
@@ -24,19 +21,10 @@ static mp_obj_t face_detector_make_new(const mp_obj_type_t *type, size_t n_args,
     mp_arg_val_t parsed_args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, args, MP_ARRAY_SIZE(allowed_args), allowed_args, parsed_args);
 
-    MP_FaceDetector *self = mp_obj_malloc_with_finaliser(MP_FaceDetector, &mp_face_detector_type);
-    self->model = std::make_shared<HumanFaceDetect>();
-    
-    if (!self->model) {
-        mp_raise_msg(&mp_type_RuntimeError, "Failed to create model instance");
-    }
-
-    mp_esp_dl::initialize_img(self->img, parsed_args[ARG_img_width].u_int, parsed_args[ARG_img_height].u_int);
-    // self->img.width = parsed_args[ARG_img_width].u_int;
-    // self->img.height = parsed_args[ARG_img_height].u_int;
-    // self->img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
-    // self->img.data = nullptr;
-
+    MP_FaceDetector *self = mp_esp_dl::make_new<MP_FaceDetector, HumanFaceDetect>(
+        &mp_face_detector_type, 
+        parsed_args[ARG_img_width].u_int, 
+        parsed_args[ARG_img_height].u_int);
     self->return_features = parsed_args[ARG_return_features].u_bool;
 
     return MP_OBJ_FROM_PTR(self);
@@ -50,25 +38,13 @@ static mp_obj_t face_detector_del(mp_obj_t self_in) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_1_CXX(face_detector_del_obj, face_detector_del);
 
-// Set width and height
-static mp_obj_t face_detector_set_pixelformat(mp_obj_t self_in, mp_obj_t width_obj, mp_obj_t height_obj) {
-    set_width_and_height<MP_FaceDetector>(self_in, mp_obj_get_int(width_obj), mp_obj_get_int(height_obj));
-    return mp_const_none;
+// Get and set methods
+static void face_detector_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest){
+    mp_esp_dl::espdl_obj_property<MP_FaceDetector>(self_in, attr, dest);
 }
-static MP_DEFINE_CONST_FUN_OBJ_3_CXX(face_detector_set_pixelformat_obj, face_detector_set_pixelformat);
 
 // Detect method
 static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj) {
-    // MP_FaceDetector *self = static_cast<MP_FaceDetector *>(MP_OBJ_TO_PTR(self_in));
-
-    // mp_buffer_info_t bufinfo;
-    // mp_get_buffer_raise(framebuffer_obj, &bufinfo, MP_BUFFER_READ);
-
-    // if (bufinfo.len != self->img.width * self->img.height * 3) {
-    //     mp_raise_ValueError("Frame buffer size does not match the image size");
-    // } else {
-    //     self->img.data = (uint8_t *)bufinfo.buf;
-    // }
     MP_FaceDetector *self = mp_esp_dl::get_and_validate_framebuffer<MP_FaceDetector>(self_in, framebuffer_obj);
 
     auto &detect_results = self->model->run(self->img);
@@ -79,20 +55,26 @@ static mp_obj_t face_detector_detect(mp_obj_t self_in, mp_obj_t framebuffer_obj)
 
     mp_obj_t list = mp_obj_new_list(0, NULL);
     for (const auto &res : detect_results) {
-        mp_obj_list_append(list, mp_obj_new_float(res.score));
+        mp_obj_t dict = mp_obj_new_dict(3);
+        mp_obj_dict_store(dict, mp_obj_new_str_from_cstr("score"), mp_obj_new_float(res.score));
+
         mp_obj_t tuple[4];
         for (int i = 0; i < 4; ++i) {
             tuple[i] = mp_obj_new_int(res.box[i]);
         }
-        mp_obj_list_append(list, mp_obj_new_tuple(4, tuple));
+        mp_obj_dict_store(dict, mp_obj_new_str_from_cstr("box"), mp_obj_new_tuple(4, tuple));
     
         if (self->return_features) {
             mp_obj_t features[10];
             for (int i = 0; i < 10; ++i) {
                 features[i] = mp_obj_new_int(res.keypoint[i]);
             }
-            mp_obj_list_append(list, mp_obj_new_tuple(10, features));
+            mp_obj_dict_store(dict, mp_obj_new_str_from_cstr("features"), mp_obj_new_tuple(10, features));
         }
+        else {
+            mp_obj_dict_store(dict, mp_obj_new_str_from_cstr("features"), mp_const_none);
+        }
+        mp_obj_list_append(list, dict);
     }
     return list;
 }
@@ -100,15 +82,13 @@ static MP_DEFINE_CONST_FUN_OBJ_2_CXX(face_detector_detect_obj, face_detector_det
 
 // Local dict
 static const mp_rom_map_elem_t face_detector_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_detect), MP_ROM_PTR(&face_detector_detect_obj) },
-    { MP_ROM_QSTR(MP_QSTR_pixelformat), MP_ROM_PTR(&face_detector_set_pixelformat_obj) },
+    { MP_ROM_QSTR(MP_QSTR_run), MP_ROM_PTR(&face_detector_detect_obj) },
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&face_detector_del_obj) },
 };
 static MP_DEFINE_CONST_DICT(face_detector_locals_dict, face_detector_locals_dict_table);
 
 // Print
-static void print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind)
-{
+static void print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     mp_printf(print, "Face detector object");
 }
 
@@ -121,5 +101,6 @@ MP_DEFINE_CONST_OBJ_TYPE(
     MP_TYPE_FLAG_NONE,
     make_new, (const void *)mp_esp_dl::FaceDetector::face_detector_make_new,
     print, (const void *)mp_esp_dl::FaceDetector::print,
+    attr, (const void *)mp_esp_dl::FaceDetector::face_detector_attr,
     locals_dict, &mp_esp_dl::FaceDetector::face_detector_locals_dict
 );
