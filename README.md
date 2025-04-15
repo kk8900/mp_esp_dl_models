@@ -2,6 +2,11 @@
 
 This is a MicroPython binding for ESP-DL (Deep Learning) models that enables face detection, face recognition, human detection, and image classification on ESP32 devices.
 
+## Donate
+
+I spent a lot of time and effort to make this. If you find this project useful, please consider donating to support my work.
+[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/cnadler)
+
 ## Available Models
 
 - `FaceDetector`: Detects faces in images and provides bounding boxes and facial features
