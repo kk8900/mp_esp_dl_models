@@ -6,11 +6,11 @@ from jpeg import Decoder
 import espdl
 import json
 
+# Configuration
 cam = Camera(fb_count=1, frame_size=FrameSize.VGA, pixel_format=PixelFormat.JPEG, jpeg_quality=85, init=False)
-# WLAN config
-ssid = 'SSID'
-password = 'PWD'
-BoxSettings = {'color': {85: "green", 60: "yellow", 0: "red"}}
+ssid = 'SSID' # Replace with your Wi-Fi credentials
+password = 'PWD' # Replace with your Wi-Fi credentials
+BoxSettings = {'color': {85: "green", 60: "yellow", 0: "red"}} # Define color settings for bounding boxes based on score
 
 # Connect to Wi-Fi
 station = network.WLAN(network.STA_IF)
@@ -20,7 +20,7 @@ station.connect(ssid, password)
 while not station.isconnected():
     time.sleep(1)
 
-print(f'Connected! IP: {station.ifconfig()[0]}. Open this IP in your browser')
+print(f'Connected! IP: {station.ifconfig()[0]}.')
 
 try:
     with open("CameraSettings.html", 'r') as file:
@@ -96,9 +96,13 @@ async def handle_client(reader, writer):
             method_name = request.split('GET /set_')[1].split('?')[0]
             if method_name == "model":
                 model_name = request.split('value=')[1].split(' ')[0]
-                ModelClass = getattr(espdl, model_name)
-                Model = ModelClass(width=cam.get_pixel_width(), height=cam.get_pixel_height())
-                response = 'HTTP/1.1 200 OK\r\n\r\n'
+                try:
+                    ModelClass = getattr(espdl, model_name)
+                    Model = ModelClass(width=cam.get_pixel_width(), height=cam.get_pixel_height())
+                    response = 'HTTP/1.1 200 OK\r\n\r\n'
+                except Exception as e:
+                    print(f"Model {model_name} not available.")
+                    response = 'HTTP/1.1 404 Not Found\r\n\r\n'
                 writer.write(response.encode())
                 await writer.drain()
                 return
