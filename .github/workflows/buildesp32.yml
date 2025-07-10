@@ -116,7 +116,7 @@ jobs:
           mkdir -p ${{ env.ARTIFACTS_DIR }}
           
           # 将固件文件移动到构建产物目录
-          mv build-${{ matrix.config.board }}/firmware.bin ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin
+          mv build-${{ matrix.config.board }}-${{ matrix.config.variant }}/firmware.bin ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin
 
       - name: Upload firmware artifact  # 上传固件构建产物
         uses: actions/upload-artifact@v4  # 使用 GitHub Actions 的上传功能
