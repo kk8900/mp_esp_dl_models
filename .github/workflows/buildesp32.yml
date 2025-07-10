@@ -115,8 +115,21 @@ jobs:
           # 创建构建产物目录
           mkdir -p ${{ env.ARTIFACTS_DIR }}
           
+           # 确定构建目录
+          if [ -n "${{ matrix.config.variant }}" ]; then
+            BUILD_DIR="build-${{ matrix.config.board }}-${{ matrix.config.variant }}"
+          else
+            BUILD_DIR="build-${{ matrix.config.board }}"
+          fi
+          
+          # 检查生成的固件文件是否存在
+          if [ ! -f "${BUILD_DIR}/micropython.bin" ]; then
+            echo "Error: micropython.bin not found in build directory."
+            exit 1
+          fi
+          
           # 将固件文件移动到构建产物目录
-          mv build-${{ matrix.config.board }}-${{ matrix.config.variant }}/firmware.bin ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin
+          mv ${BUILD_DIR}/micropython.bin ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin
 
       - name: Upload firmware artifact  # 上传固件构建产物
         uses: actions/upload-artifact@v4  # 使用 GitHub Actions 的上传功能
