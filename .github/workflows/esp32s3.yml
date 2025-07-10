@@ -2,21 +2,6 @@ name: ESP32S3
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - '**'
-    paths:
-      - 'src/**'
-      - '.github/workflows/*.yml'
-      - 'boards/**'
-    tags-ignore:
-      - 'v*'
-  pull_request:
-    branches:
-      - master
-    paths:
-      - 'src/**'
-      - '.github/workflows/*.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
