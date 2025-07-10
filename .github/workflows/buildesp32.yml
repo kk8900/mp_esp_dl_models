@@ -1,0 +1,135 @@
+# 定义工作流的名称
+name: ESP32 MicroPython Build
+
+# 触发工作流的事件
+on:
+  workflow_dispatch:  # 仅手动触发
+
+# 并发控制
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}  # 并发组的名称
+  cancel-in-progress: true  # 如果有正在进行的相同工作流，取消它们
+
+# 环境变量
+env:
+  MICROPYTHON_DIR: ~/micropython  # MicroPython 的目录
+  ESP_IDF_DIR: ~/esp-idf  # ESP-IDF 的目录
+  ARTIFACTS_DIR: ~/artifacts  # 构建产物的目录
+  MPY_VERSION: v1.25.0  # MicroPython 的版本
+  ESP_IDF_VERSION: v5.4.1  # ESP-IDF 的版本
+
+# 定义工作流中的作业
+jobs:
+  # 第一个作业：设置环境
+  setup-environment:
+    runs-on: ubuntu-24.04  # 在 Ubuntu 24.04 系统上运行
+    steps:
+      - name: Cache ESP-IDF and MicroPython  # 缓存 ESP-IDF 和 MicroPython
+        id: cache_esp_idf
+        uses: actions/cache@v4  # 使用 GitHub Actions 的缓存功能
+        with:
+          lookup-only: true  # 只查找缓存，不创建新缓存
+          path: |  # 缓存路径
+            ${{ env.ESP_IDF_DIR }}
+            ~/.espressif/
+            ~/.cache/pip/
+            ${{ env.MICROPYTHON_DIR }}
+          key: mpy-${{ env.MPY_VERSION }}-idf-${{ env.ESP_IDF_VERSION }}  # 缓存键
+          restore-keys: |  # 如果缓存键不匹配，尝试恢复部分缓存
+            mpy-${{ env.MPY_VERSION }}-idf-
+            mpy-
+
+      - name: Install dependencies (if not cached)  # 安装依赖（如果未缓存）
+        if: steps.cache_esp_idf.outputs.cache-hit != 'true'  # 如果缓存未命中
+        run: |
+          sudo apt-get update  # 更新包列表
+          sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0  # 安装依赖
+
+      - name: Clone MicroPython specific version (if not cached)  # 克隆指定版本的 MicroPython（如果未缓存）
+        if: steps.cache_esp_idf.outputs.cache-hit != 'true'  # 如果缓存未命中
+        run: |
+          cd ~  # 切换到用户目录
+          git clone --depth 1 --branch ${{ env.MPY_VERSION }} https://github.com/micropython/micropython.git ${{ env.MICROPYTHON_DIR }}  # 克隆 MicroPython
+          cd ${{ env.MICROPYTHON_DIR }}
+          git submodule update --init --depth 1  # 更新子模块
+          cd mpy-cross && make  # 编译 mpy-cross 工具
+
+      - name: Set up ESP-IDF specific version (if not cached)  # 设置指定版本的 ESP-IDF（如果未缓存）
+        if: steps.cache_esp_idf.outputs.cache-hit != 'true'  # 如果缓存未命中
+        run: |
+          cd ~  # 切换到用户目录
+          git clone --depth 1 --branch ${{ env.ESP_IDF_VERSION }} https://github.com/espressif/esp-idf.git ${{ env.ESP_IDF_DIR }}  # 克隆 ESP-IDF
+          git -C ${{ env.ESP_IDF_DIR }} submodule update --init --recursive --filter=tree:0  # 更新子模块
+          cd ${{ env.ESP_IDF_DIR }} && ./install.sh esp32,esp32s3,esp32c3  # 安装 ESP-IDF
+          source ./export.sh  # 导入 ESP-IDF 的环境变量
+
+  # 第二个作业：构建固件
+  build:
+    needs: setup-environment  # 依赖于 setup-environment 作业
+    runs-on: ubuntu-24.04  # 在 Ubuntu 24.04 系统上运行
+    strategy:
+      fail-fast: false  # 如果一个矩阵任务失败，不会立即停止其他任务
+      matrix:
+        config:  # 定义矩阵变量
+          - { board: "ESP32_GENERIC_S3", variant: "SPIRAM_OCT" }
+          - { board: "ESP32_GENERIC_C3", variant: "" }
+          - { board: "ESP32_GENERIC", variant: "SPIRAM" }
+
+    steps:
+      - name: Cache ESP-IDF and MicroPython  # 缓存 ESP-IDF 和 MicroPython
+        uses: actions/cache@v4  # 使用 GitHub Actions 的缓存功能
+        with:
+          path: |  # 缓存路径
+            ${{ env.ESP_IDF_DIR }}
+            ~/.espressif/
+            ~/.cache/pip/
+            ${{ env.MICROPYTHON_DIR }}
+          key: mpy-${{ env.MPY_VERSION }}-idf-${{ env.ESP_IDF_VERSION }}  # 缓存键
+          restore-keys: |  # 如果缓存键不匹配，尝试恢复部分缓存
+            mpy-${{ env.MPY_VERSION }}-idf-
+            mpy-
+
+      - name: Checkout repository  # 检出仓库代码
+        uses: actions/checkout@v4  # 使用 GitHub Actions 的 checkout 功能
+        with:
+          submodules: recursive  # 递归检出子模块
+
+      - name: Build MicroPython  # 构建 MicroPython
+        run: |
+          source ${{ env.ESP_IDF_DIR }}/export.sh  # 导入 ESP-IDF 的环境变量
+          
+          # 进入 micropython/ports/esp32 目录
+          cd ${{ env.MICROPYTHON_DIR }}/ports/esp32/
+          
+          # 构建命令
+          MAKE_CMD="make BOARD=${{ matrix.config.board }}"
+          
+          # 如果 variant 不为空，添加到构建命令中
+          if [ -n "${{ matrix.config.variant }}" ]; then
+            MAKE_CMD="$MAKE_CMD BOARD_VARIANT=${{ matrix.config.variant }}"
+          fi
+          
+          # 执行构建命令
+          eval "$MAKE_CMD"
+          
+          # 创建构建产物目录
+          mkdir -p ${{ env.ARTIFACTS_DIR }}
+          
+          # 将固件文件移动到构建产物目录
+          mv build-${{ matrix.config.board }}/firmware.bin ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin
+
+      - name: Upload firmware artifact  # 上传固件构建产物
+        uses: actions/upload-artifact@v4  # 使用 GitHub Actions 的上传功能
+        with:
+          name: firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}  # 构建产物的名称
+          path: ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin  # 构建产物的路径
+          retention-days: 5  # 保留天数
+
+      - name: Upload build logs on failure  # 如果构建失败，上传构建日志
+        if: failure()  # 只在失败时执行
+        uses: actions/upload-artifact@v4  # 使用 GitHub Actions 的上传功能
+        with:
+          name: build-logs-${{ matrix.config.board }}  # 构建日志的名称
+          path: |
+            ${{ github.workspace }}/boards/build-${{ matrix.config.board }}/log/  # 构建日志的路径
+          retention-days: 5  # 保留天数
