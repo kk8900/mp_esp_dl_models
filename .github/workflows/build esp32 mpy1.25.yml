@@ -71,9 +71,15 @@ jobs:
       fail-fast: false  # 如果一个矩阵任务失败，不会立即停止其他任务
       matrix:
         config:  # 定义矩阵变量
-          - { board: "ESP32_GENERIC_S3", variant: "SPIRAM_OCT" }
-          - { board: "ESP32_GENERIC_C3", variant: "" }
-          - { board: "ESP32_GENERIC", variant: "SPIRAM" }
+          - { board: "ESP32_GENERIC_S3", variant: "SPIRAM_OCT", flash_size: "16MB" }
+          - { board: "ESP32_GENERIC_S3", variant: "SPIRAM_OCT", flash_size: "8MB" }
+          - { board: "ESP32_GENERIC_C3", variant: "", flash_size: "4MB" }
+          - { board: "ESP32_GENERIC_C3", variant: "", flash_size: "8MB" }
+          - { board: "ESP32_GENERIC_C3", variant: "", flash_size: "16MB" }
+          - { board: "ESP32_GENERIC", variant: "SPIRAM", flash_size: "4MB" }
+          - { board: "ESP32_GENERIC", variant: "SPIRAM", flash_size: "8MB" }
+          - { board: "ESP32_GENERIC", variant: "SPIRAM", flash_size: "16MB" }
+          - { board: "ESP32_GENERIC", variant: "", flash_size: "8MB" }
 
     steps:
       - name: Cache ESP-IDF and MicroPython  # 缓存 ESP-IDF 和 MicroPython
@@ -109,13 +115,16 @@ jobs:
             MAKE_CMD="$MAKE_CMD BOARD_VARIANT=${{ matrix.config.variant }}"
           fi
           
+          # 添加闪存大小参数
+          MAKE_CMD="$MAKE_CMD FLASH_SIZE=${{ matrix.config.flash_size }}"
+          
           # 执行构建命令
           eval "$MAKE_CMD"
           
           # 创建构建产物目录
           mkdir -p ${{ env.ARTIFACTS_DIR }}
           
-           # 确定构建目录
+          # 确定构建目录
           if [ -n "${{ matrix.config.variant }}" ]; then
             BUILD_DIR="build-${{ matrix.config.board }}-${{ matrix.config.variant }}"
           else
@@ -129,13 +138,13 @@ jobs:
           fi
           
           # 将固件文件移动到构建产物目录
-          mv ${BUILD_DIR}/firmware.bin ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin
+          mv ${BUILD_DIR}/firmware.bin ${{ env.ARTIFACTS_DIR }}/${{ matrix.config.board }}-${{ matrix.config.variant }}-${{ matrix.config.flash_size }}-1.25.bin
 
       - name: Upload firmware artifact  # 上传固件构建产物
         uses: actions/upload-artifact@v4  # 使用 GitHub Actions 的上传功能
         with:
-          name: firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}  # 构建产物的名称
-          path: ${{ env.ARTIFACTS_DIR }}/firmware-${{ matrix.config.board }}-${{ matrix.config.variant }}.bin  # 构建产物的路径
+          name: ${{ matrix.config.board }}-${{ matrix.config.variant }}-${{ matrix.config.flash_size }}-1.25  # 构建产物的名称
+          path: ${{ env.ARTIFACTS_DIR }}/${{ matrix.config.board }}-${{ matrix.config.variant }}-${{ matrix.config.flash_size }}-1.25.bin  # 构建产物的路径
           retention-days: 5  # 保留天数
 
       - name: Upload build logs on failure  # 如果构建失败，上传构建日志
